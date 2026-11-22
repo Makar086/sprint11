@@ -22,6 +22,7 @@ func (s ParcelStore) Add(p Parcel) (int, error) {
 		return 0, err
 	}
 
+
 	id, err := res.LastInsertId()
 	if err != nil {
 		return 0, err
