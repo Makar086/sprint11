@@ -1,4 +1,4 @@
-package main
+﻿package main
 
 import (
 	"database/sql"
@@ -20,6 +20,7 @@ type Parcel struct {
 	Status    string
 	Address   string
 	CreatedAt string
+
 }
 
 type ParcelService struct {
