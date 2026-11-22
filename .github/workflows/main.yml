@@ -1,0 +1,71 @@
+name: final12
+
+on:
+  push:
+    branches: [ main]
+    tags:
+      - 'v*' # Срабатывает при пуше тегов вида v1.0.0
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # Первый job: проверка кода и запуск тестов
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22' 
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Run linter (go vet)
+        run: go vet ./...
+
+      - name: Run tests
+        run: go test -v -race ./...
+
+  # Второй job: сборка и публикация в DockerHub (только при создании тега)
+  publish:
+    name: Build and Push to DockerHub
+    runs-on: ubuntu-latest
+    needs: test # Запускается только после успешного прохождения тестов
+    if: startsWith(github.ref, 'refs/tags/') # Условие запуска только по тегу
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/my-go-app # Замените на имя вашего репозитория в DockerHub
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
